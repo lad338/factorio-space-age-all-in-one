@@ -1,0 +1,14 @@
+{
+  "name": "space-age-all-in-one",
+  "version": "0.1.0",
+  "title": "Space Age All in One - Simulacruis",
+  "author": "lad338",
+  "homepage": "https://github.com/lad338/factorio-space-age-all-in-one",
+  "description": "Adds Simulacruis, a starting planet combining Nauvis, Vulcanus, Fulgora, Gleba and Aquilo's biomes, resources and enemies into zones, with de-gated research and crafting restrictions so you can experience all of Space Age from one planet.",
+  "factorio_version": "2.0",
+  "dependencies": [
+    "base >= 2.0.72",
+    "space-age >= 2.0.72",
+    "PlanetsLib >= 1.18.0"
+  ]
+}

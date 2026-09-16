@@ -1,0 +1,15 @@
+---------------------------------------------------------------------------------------------------
+Version: 0.1.0
+Date: 2026-09-16
+  Major Features:
+    - Added Simulacruis, a new starting planet combining Nauvis, Vulcanus, Fulgora, Gleba and Aquilo's biomes, resources and enemies into zones radiating out from the center.
+    - Removed almost all planet-specific crafting and building restrictions, so recipes and buildings from every planet are usable from the start.
+    - De-gated the research tree's planet-discovery requirements, so non-Nauvis technologies can be researched without first physically visiting their origin planet.
+    - Added a ground-craftable alternative recipe for the promethium science pack, substituting out promethium asteroid chunks.
+  Features:
+    - Added mod settings to configure each zone's radius, including setting a radius to 0 to skip that zone entirely.
+    - Added a "Scrap from the start" setting that lets the Recycling technology complete by simply mining a Fulgoran ruin vault, skipping its normal prerequisites.
+    - Added an optional guaranteed low-yield starter oil patch, off by default, as a safety net against an unlucky map roll leaving no reachable oil.
+    - Exposed per-planet Terrain and per-zone Patch Size map generation controls, alongside each planet's own resource autoplace controls.
+  Compatibility:
+    - Requires PlanetsLib.
