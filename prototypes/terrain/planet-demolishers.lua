@@ -20,26 +20,12 @@
 -- lua already uses to decide "is this cell Vulcanus") guarantees one
 -- territory exactly covers one Vulcanus biome patch, whole — not an
 -- independent grid that only partially overlaps it.
--- Same clamping (each radius floored to at least the previous zone's
--- own — see biome-regions.lua's header comment for the full "0 skips
--- that zone" rationale) as biome-regions.lua/zone-masks.lua use — this
--- file needs the same zone_2_radius/zone_3_radius they end up with,
--- or simulacruis_zone_3_cell (referenced below) and the demolisher
--- tiering would disagree with where Vulcanus's own zone-3+ weighting
--- actually starts. zone_1_radius itself is only needed to compute that
--- clamp, not used directly below.
-local zone_1_radius = math.max(settings.startup["simulacruis-zone-1-radius"].value, 0)
-local zone_2_radius = math.max(settings.startup["simulacruis-zone-2-radius"].value, zone_1_radius)
-local zone_3_radius = math.max(settings.startup["simulacruis-zone-3-radius"].value, zone_2_radius)
--- Reused as the "how far outward for one demolisher size tier" span,
--- same convention as biome-regions.lua's ring_width — floored the same
--- way (matching value too, for consistency) for the same reason (a
--- literal 0 here would be a division by zero below, if Zone 3 is
--- skipped) even though this specific use has no grid_size-style
--- minimum of its own.
-local RING_WIDTH_FLOOR = 10
-local tier_span = math.max(zone_3_radius - zone_2_radius, RING_WIDTH_FLOOR)
-
+--
+-- Reuses simulacruis_zone_3_radius_value/_zone_3_ring_width directly
+-- from zone-masks.lua (the single reactive source for the Zone radius
+-- controls) rather than re-deriving them here, so the demolisher tiering
+-- always agrees with wherever Vulcanus's own zone-3+ weighting actually
+-- starts, with nothing to keep in sync by hand.
 data:extend({
   {
     type = "noise-expression",
@@ -51,14 +37,14 @@ data:extend({
   -- (simulacruis_vulcanus_zone_3plus_weight, already defined in
   -- planet-resources.lua) — negative everywhere else, which
   -- the engine treats as no spawn there. Where valid, tiers up from
-  -- small (0) to big (2) the further out you are, one tier per
-  -- tier_span of distance past zone_3_radius, clamped to the 3-entry
-  -- units list below.
+  -- small (0) to big (2) the further out you are, one Zone-3-ring-width
+  -- of distance past Zone 3's own radius per tier, clamped to the
+  -- 3-entry units list below.
   {
     type = "noise-expression",
     name = "simulacruis_demolisher_territory_variation",
     expression = "if(simulacruis_vulcanus_zone_3plus_weight > 0.5,\z
-                     floor(clamp((simulacruis_wobbled_distance - " .. zone_3_radius .. ") / " .. tier_span .. ", 0, 2)),\z
+                     floor(clamp((simulacruis_wobbled_distance - simulacruis_zone_3_radius_value) / simulacruis_zone_3_ring_width, 0, 2)),\z
                      -1)"
   }
 })
