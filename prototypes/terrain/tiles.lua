@@ -44,10 +44,7 @@ local fulgora_tiles = {
 }
 
 local gleba_tiles = {
-  "natural-yumako-soil", "natural-jellynut-soil", "wetland-yumako", "wetland-jellynut",
-  "wetland-blue-slime", "wetland-light-green-slime", "wetland-green-slime",
-  "wetland-light-dead-skin", "wetland-dead-skin", "wetland-pink-tentacle",
-  "wetland-red-tentacle", "gleba-deep-lake", "lowland-brown-blubber",
+  "natural-yumako-soil", "natural-jellynut-soil", "lowland-brown-blubber",
   "lowland-olive-blubber", "lowland-olive-blubber-2", "lowland-olive-blubber-3", "lowland-pale-green",
   "lowland-cream-cauliflower", "lowland-cream-cauliflower-2", "lowland-dead-skin",
   "lowland-dead-skin-2", "lowland-cream-red", "lowland-red-vein",
@@ -58,11 +55,46 @@ local gleba_tiles = {
   "midland-yellow-crust-3", "midland-yellow-crust-4", "highland-dark-rock",
   "highland-dark-rock-2", "highland-yellow-rock", "pit-rock"
 }
+-- gleba-deep-lake is the one Gleba tile that's actually impassable
+-- (carries the player collision layer). But every "wetland-*" tile,
+-- although walkable (no player collision), carries the water_tile
+-- collision layer — confirmed via --dump-data: Factorio's own game
+-- logic (building placement, etc.) treats them as water, same
+-- classification oil-ocean-shallow/-deep get on Fulgora, just not
+-- blocking on foot. Grouped with gleba-deep-lake here rather than the
+-- ordinary ground list above, so none of them show up right at an
+-- island's own coastline either — only the un-boggy lowland/midland/
+-- highland/natural-soil tiles above do.
+local gleba_water_tiles = {
+  "gleba-deep-lake", "wetland-yumako", "wetland-jellynut",
+  "wetland-blue-slime", "wetland-light-green-slime", "wetland-green-slime",
+  "wetland-light-dead-skin", "wetland-dead-skin", "wetland-pink-tentacle",
+  "wetland-red-tentacle"
+}
+data:extend({
+  { type = "noise-expression", name = "simulacruis_gleba_water_gate",
+    expression = "simulacruis_gleba_weight" }
+})
 
 local aquilo_tiles = {
   "snow-flat", "snow-crests", "snow-lumpy", "snow-patchy",
-  "ice-rough", "ice-smooth", "brash-ice", "ammoniacal-ocean", "ammoniacal-ocean-2"
+  "ice-rough", "ice-smooth"
 }
+-- Split from aquilo_tiles behind its own indirection (a plain passthrough
+-- to simulacruis_aquilo_weight by default, identical to being in the
+-- list above) so an alternative map-gen mode can restrict these to
+-- island interiors without touching ordinary snow/ice, without this
+-- file needing to know which mode is active.
+--
+-- brash-ice belongs here, not in the ordinary snow/ice list above —
+-- confirmed via --dump-data that it carries the player collision layer
+-- (impassable), exactly like ammoniacal-ocean, unlike ice-rough/
+-- ice-smooth/every snow-* tile (all walkable, no player collision).
+local aquilo_hazard_tiles = { "ammoniacal-ocean", "ammoniacal-ocean-2", "brash-ice" }
+data:extend({
+  { type = "noise-expression", name = "simulacruis_aquilo_hazard_gate",
+    expression = "simulacruis_aquilo_weight" }
+})
 
 local new_tiles = {}
 local tile_settings = {}
@@ -80,7 +112,9 @@ end
 add_all(vulcanus_tiles, "simulacruis_vulcanus_weight")
 add_all(fulgora_tiles, "simulacruis_fulgora_weight")
 add_all(gleba_tiles, "simulacruis_gleba_weight")
+add_all(gleba_water_tiles, "simulacruis_gleba_water_gate")
 add_all(aquilo_tiles, "simulacruis_aquilo_weight")
+add_all(aquilo_hazard_tiles, "simulacruis_aquilo_hazard_gate")
 
 -- Lava and heavy-oil-sea are dangerous/disruptive enough that they're
 -- withheld until Zone 4, well past the early game, rather than
