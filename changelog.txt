@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.2.1
+Date: 2026-09-17
+  Bugfixes:
+    - Fixed a startup crash when another mod (e.g. More Casting, More Direct Casting) modifies foundation, landfill, ice-platform, or Gleba's soil-conversion items without their optional tile_condition field.
+
+---------------------------------------------------------------------------------------------------
 Version: 0.2.0
 Date: 2026-09-16
   Major Features:
