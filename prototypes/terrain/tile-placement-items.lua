@@ -43,8 +43,20 @@ local function list_contains(list, value)
   return false
 end
 
+-- tile_condition is a documented-optional field (PlaceAsTile.tile_condition)
+-- — a name-based whitelist that's only meaningful alongside the always-
+-- present, mask-based `condition` field, not a required companion to it.
+-- Another mod is free to replace one of these items and drop
+-- tile_condition entirely, relying on the mask alone; that's not a
+-- conflict, just a shape this file didn't originally account for. Skip
+-- entirely rather than create an empty list and populate it with only
+-- our own renamed tiles: an empty tile_condition is a whitelist matching
+-- nothing, which would turn "no name restriction" into "only Simulacruis
+-- tiles allowed", breaking the item everywhere else in the galaxy.
 local function add_simulacruis_tile_conditions(item_name, original_tile_names)
-  local place_as_tile = data.raw.item[item_name].place_as_tile
+  local item = data.raw.item[item_name]
+  if not item or not item.place_as_tile or not item.place_as_tile.tile_condition then return end
+  local place_as_tile = item.place_as_tile
   for _, original_name in ipairs(original_tile_names) do
     local renamed = "simulacruis-" .. original_name
     if not list_contains(place_as_tile.tile_condition, renamed) then
@@ -138,8 +150,10 @@ end
 --
 -- Takes the PROTOTYPE directly (not a name to look up in data.raw.tile)
 -- so it can be applied equally to vanilla originals and to our own
--- "simulacruis-<name>" clones below.
+-- "simulacruis-<name>" clones below. Guards against nil in case another
+-- mod removes or renames one of these vanilla tiles outright.
 local function add_simulacruis_transition_partners(tile)
+  if not tile then return end
   for _, transition in ipairs(tile.transitions or {}) do
     if transition.to_tiles then
       local additions = {}
