@@ -16,6 +16,7 @@ Simulacruis is a planet that combines all the Space Age planets: Nauvis, Vulcanu
 
 - Start at a planet with all Space Age planets' environment.
 - Customization on the map generation of the planet.
+- **NEW!!** You may select island mode in map generation. Each island will be their own biome. (Althoug, some may have overlap due to map generation)
 - Modified research tree to access non-Nauvis resources earlier.
 - Crafting and building restrictions are completely removed, except space platform only ones.
 - Added a ground recipe for promethium science pack.
@@ -23,6 +24,7 @@ Simulacruis is a planet that combines all the Space Age planets: Nauvis, Vulcanu
 
 ![map generator example 1](./images/map_generator_example-1.png)
 ![map generator example 2](./images/map_generator_example-2.png)
+![map generator example island](./images/map_generator_example-island.png)
 
 ## Balancing (sort of)
 
@@ -92,6 +94,7 @@ The rest of the map. Everything is available. The farther from the center, the l
 ## Settings
 
 - In map generation, you can use the slide bar to control the resources as well as the terrains.
+- **NEW!!** In map generation, you can selection island to generate island mode
 - In mod settings, you may modify the zone radius. You may even set it to 0 to "skip" a zone.
 - There are 2 quality of life settings, starter oil patch and earlier scrap recycling.
 
