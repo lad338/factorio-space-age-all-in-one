@@ -12,6 +12,9 @@
 -- exist.
 local planet = data.raw.planet.simulacruis
 local controls = {
+  "simulacruis_zone_1_radius",
+  "simulacruis_zone_2_radius",
+  "simulacruis_zone_3_radius",
   "simulacruis_nauvis_terrain",
   "simulacruis_vulcanus_terrain",
   "simulacruis_fulgora_terrain",

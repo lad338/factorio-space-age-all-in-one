@@ -1,23 +1,24 @@
 -- Zone radii, again (see zone-masks.lua for the zone-weight machinery
--- these actually feed) — needed here purely to compute the distance
--- band boundaries below.
+-- and the Zone radius controls that now actually drive it) — needed
+-- here purely to size this file's own patch/grid geometry below.
 --
--- Each radius is clamped to be at least the previous zone's own
--- (already-clamped) radius, so a player entering 0 — or any value at
--- or below the previous zone's radius — can never produce a negative
--- ring width. Setting a radius equal to (or below) the one before it
--- collapses that zone to a sliver of a tile wide, which reads in
--- practice as "skipped": Zone N effectively vanishes and Zone N+1
--- begins right where Zone N-1 left off. Setting Zone 1/2/3's radii all
--- to 0 collapses all three, making the whole map Zone 4. This exact
--- clamping is duplicated in zone-masks.lua and planet-demolishers.lua
--- (each independently re-reads the raw settings too — see this file's
--- own ring-width duplication note below) — all three MUST agree on
--- the same effective radii, or their zone boundaries would disagree
--- with each other.
-local zone_1_radius = math.max(settings.startup["simulacruis-zone-1-radius"].value, 0)
-local zone_2_radius = math.max(settings.startup["simulacruis-zone-2-radius"].value, zone_1_radius)
-local zone_3_radius = math.max(settings.startup["simulacruis-zone-3-radius"].value, zone_2_radius)
+-- Deliberately frozen at these exact defaults, NOT read from the Zone
+-- radius controls the way zone-masks.lua's own zone boundaries now are:
+-- voronoi_cell_id's grid_size must be a spatial constant (uniform across
+-- the whole map, never varying with x/y — see this file's own note
+-- further down), which a runtime control value satisfies fine on its
+-- own, but the GRID SIZES below are also built from ring widths derived
+-- from TWO radii at once (zone_2_radius - zone_1_radius, etc.), and
+-- threading that through the same skip/floor logic as zone-masks.lua
+-- for every downstream grid size was judged not worth the added
+-- complexity for a purely cosmetic patch-texture concern. Zone
+-- boundaries — which planet owns which area — fully react to the new
+-- controls regardless; only how big each zone's internal biome patches
+-- look stays anchored to the original defaults, independently
+-- adjustable via the Patch Size controls below either way.
+local zone_1_radius = 300
+local zone_2_radius = 1000
+local zone_3_radius = 3000
 
 -- Floors every ring-width-derived quantity below (grid sizes here, and
 -- zone-masks.lua's transition widths/wobble amplitudes) to a small but
@@ -263,56 +264,65 @@ data:extend(voronoi_prototypes)
 data:extend(scale_select_prototypes)
 
 data:extend({
-  { type = "autoplace-control", name = "simulacruis_zone_2_patch_scale", category = "terrain", order = "simulacruis-patch-scale-1",
+  { type = "autoplace-control", name = "simulacruis_zone_2_patch_scale", category = "terrain", order = "simulacruis-a-zone-scale-1",
     localised_description = "Only Scale affects patch size here. Coverage has no effect." },
-  { type = "autoplace-control", name = "simulacruis_zone_3_patch_scale", category = "terrain", order = "simulacruis-patch-scale-2",
+  { type = "autoplace-control", name = "simulacruis_zone_3_patch_scale", category = "terrain", order = "simulacruis-a-zone-scale-2",
     localised_description = "Only Scale affects patch size here. Coverage has no effect." },
-  { type = "autoplace-control", name = "simulacruis_zone_4_patch_scale", category = "terrain", order = "simulacruis-patch-scale-3",
+  { type = "autoplace-control", name = "simulacruis_zone_4_patch_scale", category = "terrain", order = "simulacruis-a-zone-scale-3",
     localised_description = "Only Scale affects patch size here. Coverage has no effect." },
 })
 
 data:extend({
+  -- The near/far (and band0/1/2) split point itself DOES track the
+  -- live Zone radius controls (simulacruis_zone_N_radius_value, from
+  -- zone-masks.lua) even though the grid sizes on either side of it stay
+  -- frozen — otherwise dragging a Zone radius control would leave this
+  -- tier boundary sitting at its old, now visibly wrong, distance
+  -- relative to the zone boundary it's supposed to roughly track.
   {
     type = "noise-expression",
     name = "simulacruis_zone_2_cell",
-    expression = "if(simulacruis_wobbled_distance > " .. ((zone_1_radius + zone_2_radius) / 2) .. ",\z
+    expression = "if(simulacruis_wobbled_distance > (simulacruis_zone_1_radius_value + simulacruis_zone_2_radius_value) / 2,\z
                      simulacruis_zone_2_cell_far, simulacruis_zone_2_cell_near)"
   },
   {
     type = "noise-expression",
     name = "simulacruis_zone_2_pyramid",
-    expression = "if(simulacruis_wobbled_distance > " .. ((zone_1_radius + zone_2_radius) / 2) .. ",\z
+    expression = "if(simulacruis_wobbled_distance > (simulacruis_zone_1_radius_value + simulacruis_zone_2_radius_value) / 2,\z
                      simulacruis_zone_2_pyramid_far, simulacruis_zone_2_pyramid_near)"
   },
 
   {
     type = "noise-expression",
     name = "simulacruis_zone_3_cell",
-    expression = "if(simulacruis_wobbled_distance > " .. ((zone_2_radius + zone_3_radius) / 2) .. ",\z
+    expression = "if(simulacruis_wobbled_distance > (simulacruis_zone_2_radius_value + simulacruis_zone_3_radius_value) / 2,\z
                      simulacruis_zone_3_cell_far, simulacruis_zone_3_cell_near)"
   },
   {
     type = "noise-expression",
     name = "simulacruis_zone_3_pyramid",
-    expression = "if(simulacruis_wobbled_distance > " .. ((zone_2_radius + zone_3_radius) / 2) .. ",\z
+    expression = "if(simulacruis_wobbled_distance > (simulacruis_zone_2_radius_value + simulacruis_zone_3_radius_value) / 2,\z
                      simulacruis_zone_3_pyramid_far, simulacruis_zone_3_pyramid_near)"
   },
 
   -- Zone 4 is unbounded, so it gets three progressively larger bands
   -- instead of just two, keeping patches growing the further out you
-  -- walk rather than capping out after a single jump.
+  -- walk rather than capping out after a single jump. ring_width itself
+  -- (the spacing between bands) stays the frozen default — only the
+  -- anchor point (Zone 3's own live radius) needs to track the control,
+  -- so this always starts exactly where Zone 3 actually ends.
   {
     type = "noise-expression",
     name = "simulacruis_zone_4_cell",
-    expression = "if(simulacruis_wobbled_distance > " .. (zone_3_radius + 2 * ring_width) .. ", simulacruis_zone_4_cell_band2,\z
-                  if(simulacruis_wobbled_distance > " .. (zone_3_radius + ring_width) .. ", simulacruis_zone_4_cell_band1,\z
+    expression = "if(simulacruis_wobbled_distance > simulacruis_zone_3_radius_value + " .. (2 * ring_width) .. ", simulacruis_zone_4_cell_band2,\z
+                  if(simulacruis_wobbled_distance > simulacruis_zone_3_radius_value + " .. ring_width .. ", simulacruis_zone_4_cell_band1,\z
                   simulacruis_zone_4_cell_band0))"
   },
   {
     type = "noise-expression",
     name = "simulacruis_zone_4_pyramid",
-    expression = "if(simulacruis_wobbled_distance > " .. (zone_3_radius + 2 * ring_width) .. ", simulacruis_zone_4_pyramid_band2,\z
-                  if(simulacruis_wobbled_distance > " .. (zone_3_radius + ring_width) .. ", simulacruis_zone_4_pyramid_band1,\z
+    expression = "if(simulacruis_wobbled_distance > simulacruis_zone_3_radius_value + " .. (2 * ring_width) .. ", simulacruis_zone_4_pyramid_band2,\z
+                  if(simulacruis_wobbled_distance > simulacruis_zone_3_radius_value + " .. ring_width .. ", simulacruis_zone_4_pyramid_band1,\z
                   simulacruis_zone_4_pyramid_band0))"
   },
 
@@ -418,11 +428,11 @@ data:extend({
   -- "terrain" category always shows both sliders as a pair — so this
   -- is a tooltip explaining Scale is a no-op here rather than a way to
   -- truly hide it.
-  { type = "autoplace-control", name = "simulacruis_nauvis_terrain", category = "terrain", order = "simulacruis-terrain-1", localised_description = "Only Coverage affects Simulacruis's biome mix. Scale has no effect here." },
-  { type = "autoplace-control", name = "simulacruis_vulcanus_terrain", category = "terrain", order = "simulacruis-terrain-2", localised_description = "Only Coverage affects Simulacruis's biome mix. Scale has no effect here." },
-  { type = "autoplace-control", name = "simulacruis_fulgora_terrain", category = "terrain", order = "simulacruis-terrain-3", localised_description = "Only Coverage affects Simulacruis's biome mix. Scale has no effect here." },
-  { type = "autoplace-control", name = "simulacruis_gleba_terrain", category = "terrain", order = "simulacruis-terrain-4", localised_description = "Only Coverage affects Simulacruis's biome mix. Scale has no effect here." },
-  { type = "autoplace-control", name = "simulacruis_aquilo_terrain", category = "terrain", order = "simulacruis-terrain-5", localised_description = "Only Coverage affects Simulacruis's biome mix. Scale has no effect here." },
+  { type = "autoplace-control", name = "simulacruis_nauvis_terrain", category = "terrain", order = "simulacruis-b-terrain-1", localised_description = "Only Coverage affects Simulacruis's biome mix. Scale has no effect here." },
+  { type = "autoplace-control", name = "simulacruis_vulcanus_terrain", category = "terrain", order = "simulacruis-b-terrain-2", localised_description = "Only Coverage affects Simulacruis's biome mix. Scale has no effect here." },
+  { type = "autoplace-control", name = "simulacruis_fulgora_terrain", category = "terrain", order = "simulacruis-b-terrain-3", localised_description = "Only Coverage affects Simulacruis's biome mix. Scale has no effect here." },
+  { type = "autoplace-control", name = "simulacruis_gleba_terrain", category = "terrain", order = "simulacruis-b-terrain-4", localised_description = "Only Coverage affects Simulacruis's biome mix. Scale has no effect here." },
+  { type = "autoplace-control", name = "simulacruis_aquilo_terrain", category = "terrain", order = "simulacruis-b-terrain-5", localised_description = "Only Coverage affects Simulacruis's biome mix. Scale has no effect here." },
   -- These controls are only usable once actually enabled on the
   -- Simulacruis planet's own map_gen_settings.autoplace_controls (a
   -- planet-scoped dict, unlike the control PROTOTYPE above, which is

@@ -34,7 +34,7 @@
 -- None (0) — that value is only reachable by unchecking, which no
 -- longer exists — so its own lowest reachable notch is Very Low (0.5).
 data:extend({
-  { type = "autoplace-control", name = "simulacruis_islands", category = "terrain", order = "simulacruis-terrain-0",
+  { type = "autoplace-control", name = "simulacruis_islands", category = "terrain", order = "simulacruis-c-islands",
     can_be_disabled = false,
     localised_description = "Slide Coverage down to Very Low or Low to generate Simulacruis using the Islands layout instead of the default ring layout. Normal and above keep the default layout. Scale has no effect here." }
 })
