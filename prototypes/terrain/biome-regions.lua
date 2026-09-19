@@ -1,21 +1,10 @@
--- Zone radii, again (see zone-masks.lua for the zone-weight machinery
--- and the Zone radius controls that now actually drive it) — needed
--- here purely to size this file's own patch/grid geometry below.
---
--- Deliberately frozen at these exact defaults, NOT read from the Zone
--- radius controls the way zone-masks.lua's own zone boundaries now are:
--- voronoi_cell_id's grid_size must be a spatial constant (uniform across
--- the whole map, never varying with x/y — see this file's own note
--- further down), which a runtime control value satisfies fine on its
--- own, but the GRID SIZES below are also built from ring widths derived
--- from TWO radii at once (zone_2_radius - zone_1_radius, etc.), and
--- threading that through the same skip/floor logic as zone-masks.lua
--- for every downstream grid size was judged not worth the added
--- complexity for a purely cosmetic patch-texture concern. Zone
--- boundaries — which planet owns which area — fully react to the new
--- controls regardless; only how big each zone's internal biome patches
--- look stays anchored to the original defaults, independently
--- adjustable via the Patch Size controls below either way.
+-- Zone radii, frozen at their startup-setting defaults for this file's
+-- own patch/grid sizing — voronoi grid_size must be a spatial constant,
+-- and these grid sizes are derived from two radii at once (ring widths),
+-- so they don't track the live Zone radius controls the way
+-- zone-masks.lua's own zone boundaries do. Only patch texture size stays
+-- anchored to the defaults; it's independently adjustable via the Patch
+-- Size controls below.
 local zone_1_radius = 300
 local zone_2_radius = 1000
 local zone_3_radius = 3000
@@ -272,57 +261,72 @@ data:extend({
     localised_description = "Only Scale affects patch size here. Coverage has no effect." },
 })
 
+-- Approximates the value simulacruis_zone_N_field_raw has at a given
+-- target distance, extrapolating its own linear falloff (matching the
+-- same fit zone-masks.lua's own ZONE_SEGMENTATION_FIT uses): a field
+-- calibrated to radius R crosses 0 at distance R and 20 at distance 0,
+-- so its value at distance D is 20 * (1 - D / R).
+local function field_level_at(distance_expr, radius_expr)
+  return "20 * (1 - (" .. distance_expr .. ") / (" .. radius_expr .. "))"
+end
+local zone_2_midlevel = field_level_at(
+  "(simulacruis_zone_1_radius_value + simulacruis_zone_2_radius_value) / 2", "simulacruis_zone_2_radius_value")
+local zone_3_midlevel = field_level_at(
+  "(simulacruis_zone_2_radius_value + simulacruis_zone_3_radius_value) / 2", "simulacruis_zone_3_radius_value")
+local zone_4_band1_level = field_level_at(
+  "simulacruis_zone_3_radius_value + " .. ring_width, "simulacruis_zone_3_radius_value")
+local zone_4_band2_level = field_level_at(
+  "simulacruis_zone_3_radius_value + " .. (2 * ring_width), "simulacruis_zone_3_radius_value")
+
 data:extend({
-  -- The near/far (and band0/1/2) split point itself DOES track the
-  -- live Zone radius controls (simulacruis_zone_N_radius_value, from
-  -- zone-masks.lua) even though the grid sizes on either side of it stay
-  -- frozen — otherwise dragging a Zone radius control would leave this
-  -- tier boundary sitting at its old, now visibly wrong, distance
-  -- relative to the zone boundary it's supposed to roughly track.
+  -- The near/far (and band0/1/2) split reuses each zone's own organic
+  -- field (zone-masks.lua) instead of raw distance, so the split follows
+  -- the same coastline-like shape as the zone boundary itself rather
+  -- than a circle. field_level_at extrapolates a field's own linear
+  -- falloff to find the value it has at a given target distance, so the
+  -- split lands at roughly the intended radius on average.
   {
     type = "noise-expression",
     name = "simulacruis_zone_2_cell",
-    expression = "if(simulacruis_wobbled_distance > (simulacruis_zone_1_radius_value + simulacruis_zone_2_radius_value) / 2,\z
+    expression = "if(simulacruis_zone_2_field_raw < " .. zone_2_midlevel .. ",\z
                      simulacruis_zone_2_cell_far, simulacruis_zone_2_cell_near)"
   },
   {
     type = "noise-expression",
     name = "simulacruis_zone_2_pyramid",
-    expression = "if(simulacruis_wobbled_distance > (simulacruis_zone_1_radius_value + simulacruis_zone_2_radius_value) / 2,\z
+    expression = "if(simulacruis_zone_2_field_raw < " .. zone_2_midlevel .. ",\z
                      simulacruis_zone_2_pyramid_far, simulacruis_zone_2_pyramid_near)"
   },
 
   {
     type = "noise-expression",
     name = "simulacruis_zone_3_cell",
-    expression = "if(simulacruis_wobbled_distance > (simulacruis_zone_2_radius_value + simulacruis_zone_3_radius_value) / 2,\z
+    expression = "if(simulacruis_zone_3_field_raw < " .. zone_3_midlevel .. ",\z
                      simulacruis_zone_3_cell_far, simulacruis_zone_3_cell_near)"
   },
   {
     type = "noise-expression",
     name = "simulacruis_zone_3_pyramid",
-    expression = "if(simulacruis_wobbled_distance > (simulacruis_zone_2_radius_value + simulacruis_zone_3_radius_value) / 2,\z
+    expression = "if(simulacruis_zone_3_field_raw < " .. zone_3_midlevel .. ",\z
                      simulacruis_zone_3_pyramid_far, simulacruis_zone_3_pyramid_near)"
   },
 
   -- Zone 4 is unbounded, so it gets three progressively larger bands
   -- instead of just two, keeping patches growing the further out you
-  -- walk rather than capping out after a single jump. ring_width itself
-  -- (the spacing between bands) stays the frozen default — only the
-  -- anchor point (Zone 3's own live radius) needs to track the control,
-  -- so this always starts exactly where Zone 3 actually ends.
+  -- walk. Driven by simulacruis_zone_3_field_raw's own continued falloff
+  -- past Zone 3's edge, same organic shape as the other splits above.
   {
     type = "noise-expression",
     name = "simulacruis_zone_4_cell",
-    expression = "if(simulacruis_wobbled_distance > simulacruis_zone_3_radius_value + " .. (2 * ring_width) .. ", simulacruis_zone_4_cell_band2,\z
-                  if(simulacruis_wobbled_distance > simulacruis_zone_3_radius_value + " .. ring_width .. ", simulacruis_zone_4_cell_band1,\z
+    expression = "if(simulacruis_zone_3_field_raw < " .. zone_4_band2_level .. ", simulacruis_zone_4_cell_band2,\z
+                  if(simulacruis_zone_3_field_raw < " .. zone_4_band1_level .. ", simulacruis_zone_4_cell_band1,\z
                   simulacruis_zone_4_cell_band0))"
   },
   {
     type = "noise-expression",
     name = "simulacruis_zone_4_pyramid",
-    expression = "if(simulacruis_wobbled_distance > simulacruis_zone_3_radius_value + " .. (2 * ring_width) .. ", simulacruis_zone_4_pyramid_band2,\z
-                  if(simulacruis_wobbled_distance > simulacruis_zone_3_radius_value + " .. ring_width .. ", simulacruis_zone_4_pyramid_band1,\z
+    expression = "if(simulacruis_zone_3_field_raw < " .. zone_4_band2_level .. ", simulacruis_zone_4_pyramid_band2,\z
+                  if(simulacruis_zone_3_field_raw < " .. zone_4_band1_level .. ", simulacruis_zone_4_pyramid_band1,\z
                   simulacruis_zone_4_pyramid_band0))"
   },
 
