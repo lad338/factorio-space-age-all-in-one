@@ -110,17 +110,7 @@ The rest of the map. Everything is available. The farther from the center, the l
 
 - Loading into an existing Space Age save should work fine. Just traveling to Simulacruis through your spacecraft should unlock the map.
 
-## Screeshots
-
-### Example map previews
-
-![map preview example 1](./images/simulacruis-preview-seed-1.png)
-![map preview example 2](./images/simulacruis-preview-seed-7.png)
-![map preview example 3](./images/simulacruis-preview-seed-42.png)
-![map preview example 4](./images/simulacruis-preview-seed-99.png)
-![map preview example 5](./images/simulacruis-preview-seed-12345.png)
-
-### Space map
+### Space map screenshots
 
 ![Space map](./images/space_map.png)
 ![Space map with modded planets example](./images/space_map_with_modded_planets.png)
