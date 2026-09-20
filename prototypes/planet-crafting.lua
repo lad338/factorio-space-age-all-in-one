@@ -58,7 +58,7 @@
 -- in the entire game, so it would cleanly fix
 -- recycler/electromagnetic-science-pack/
 -- lightning-rod/lightning-collector/electromagnetic-plant; separately,
--- fish-breeding/wood-processing already need exactly pressure = 1000,
+-- fish-breeding/tree-seed already need exactly pressure = 1000,
 -- which Simulacruis already has as its own default (same as Nauvis),
 -- so those two already work correctly even without being on this list
 -- at all. The other ~22 recipes have no such fix available — Vulcanus/
@@ -78,7 +78,7 @@ local restricted_recipes = {
   "electromagnetic-science-pack", "cryogenic-science-pack", "acid-neutralisation", "foundry",
   "turbo-transport-belt", "turbo-underground-belt", "turbo-splitter", "big-mining-drill", "biochamber",
   "fish-breeding", "lightning-rod", "electromagnetic-plant", "lightning-collector", "cryogenic-plant",
-  "quantum-processor", "fusion-reactor", "fusion-generator", "wood-processing",
+  "quantum-processor", "fusion-reactor", "fusion-generator", "tree-seed",
   "space-science-pack", "promethium-science-pack"
 }
 
