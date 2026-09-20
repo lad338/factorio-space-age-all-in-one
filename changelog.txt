@@ -1,8 +1,14 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.4.0
+Date: 2026-09-18
+  Compatibility:
+    - Porting mod version 0.3.0 to Factorio 2.1
+
+---------------------------------------------------------------------------------------------------
 Version: 0.3.0
 Date: 2026-09-18
   Major Features:
-    - Zone borders shows a more organic border than a ring like shape
+    - Zone borders show a more organic border than a ring like shape
 
 ---------------------------------------------------------------------------------------------------
 Version: 0.2.2

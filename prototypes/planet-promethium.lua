@@ -31,7 +31,7 @@
 local original = data.raw.recipe["promethium-science-pack"]
 local ground_recipe = table.deepcopy(original)
 ground_recipe.name = "simulacruis-promethium-science-pack"
-ground_recipe.category = "organic"
+ground_recipe.categories = { "organic" }
 ground_recipe.ingredients = {
   { type = "item", name = "quantum-processor", amount = 1 },
   { type = "item", name = "biter-egg", amount = 10 },
