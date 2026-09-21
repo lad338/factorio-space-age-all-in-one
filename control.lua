@@ -4,6 +4,42 @@
 local crash_site = require("crash-site")
 local util = require("util")
 
+-- freeplay's own on_player_created shows its intro message immediately
+-- once disable_crashsite is true (its crash-site branch, the only thing
+-- that would otherwise delay it, gets skipped entirely) — well before
+-- our own teleport/cutscene in on_nth_tick(1) run. Suppressed here and
+-- shown by us instead, at the point our own cutscene actually ends (see
+-- on_cutscene_waypoint_reached). skip_intro/custom_intro_message are
+-- captured once, before being overridden, so simulacruis_show_intro_message
+-- can respect whatever they originally were (e.g. another mod's own
+-- custom text, or a debug/tiny-map save that skips the intro entirely).
+local function capture_and_neutralize_freeplay_intro()
+  if not remote.interfaces["freeplay"] then return end
+  if storage.simulacruis_skip_intro == nil then
+    storage.simulacruis_skip_intro = remote.call("freeplay", "get_skip_intro")
+  end
+  if storage.simulacruis_custom_intro_message == nil then
+    storage.simulacruis_custom_intro_message = remote.call("freeplay", "get_custom_intro_message")
+  end
+  if remote.interfaces["freeplay"]["set_skip_intro"] then
+    remote.call("freeplay", "set_skip_intro", true)
+  end
+end
+
+-- Mirrors freeplay's own get_starting_message/show_intro_message
+-- (script/freeplay/freeplay.lua).
+local function simulacruis_show_intro_message(player)
+  if storage.simulacruis_skip_intro then return end
+  local message = storage.simulacruis_custom_intro_message
+    or (script.active_mods["space-age"] and { "msg-intro-space-age" })
+    or { "msg-intro" }
+  if game.is_multiplayer() then
+    player.print(message)
+  else
+    game.show_message_dialog({ text = message })
+  end
+end
+
 -- Simulacruis should always be reachable, and Nauvis should be
 -- reachable exactly when the force has researched space-platform-
 -- thruster (see the on_research_finished handler below for why that's
@@ -37,6 +73,37 @@ local function ensure_simulacruis_space_locations_for_all_forces()
   end
 end
 
+-- Any Planet Start (APS) lets the player pick a different starting
+-- planet via its own "aps-planet" startup setting. When the player has
+-- made that explicit choice, APS should own their spawn entirely —
+-- Simulacruis is still reachable later (ensure_simulacruis_space_locations
+-- unlocks it for every force regardless of where they started), just
+-- not the forced starting point. "none" (APS's own default, meaning no
+-- choice was made) is the only case this mod steps in for.
+local function any_planet_start_choice()
+  local setting = settings.startup["aps-planet"]
+  return setting and setting.value or "none"
+end
+
+-- With "none" selected, APS does the exact same thing this mod does on
+-- on_player_created: disable freeplay's crash site and build its own,
+-- teleporting the player to Nauvis. Left alone, both mods fight over
+-- the same player — APS's own crash-site cutscene switches the player
+-- to a cutscene controller, and our own on_nth_tick(1) handler then
+-- crashes calling get_main_inventory() on it (no inventory off a
+-- cutscene controller). Neutralized via APS's own remote interface
+-- instead of coexisting: set_disable_crashsite stops it building a
+-- second crash site/cutscene, and set_skip_intro/disable_warning avoid
+-- its own redundant popups once disable_crashsite makes it fall through
+-- to those instead.
+local function neutralize_any_planet_start()
+  if not remote.interfaces["APS"] then return end
+  if any_planet_start_choice() ~= "none" then return end
+  remote.call("APS", "set_disable_crashsite", true)
+  remote.call("APS", "set_skip_intro", true)
+  remote.call("APS", "disable_warning")
+end
+
 script.on_init(function()
   storage.simulacruis_pending_spawns = {}
   -- Guards the crash site/cutscene to the very first player only (see
@@ -55,11 +122,15 @@ script.on_init(function()
   if remote.interfaces["freeplay"] and remote.interfaces["freeplay"]["set_disable_crashsite"] then
     remote.call("freeplay", "set_disable_crashsite", true)
   end
+  capture_and_neutralize_freeplay_intro()
+  neutralize_any_planet_start()
 
   ensure_simulacruis_space_locations_for_all_forces()
 end)
 
 script.on_configuration_changed(function()
+  capture_and_neutralize_freeplay_intro()
+  neutralize_any_planet_start()
   ensure_simulacruis_space_locations_for_all_forces()
 end)
 
@@ -72,7 +143,13 @@ end)
 -- Queue newly-created players rather than teleporting them immediately,
 -- so freeplay's own on_player_created handler (starting inventory, etc.)
 -- gets a chance to run first regardless of mod/scenario handler order.
+--
+-- Skipped entirely when Any Planet Start has an explicit planet choice
+-- (see any_planet_start_choice/neutralize_any_planet_start) — that
+-- player's spawn belongs to APS, not to us.
 script.on_event(defines.events.on_player_created, function(event)
+  if remote.interfaces["APS"] and any_planet_start_choice() ~= "none" then return end
+
   storage.simulacruis_pending_spawns = storage.simulacruis_pending_spawns or {}
   table.insert(storage.simulacruis_pending_spawns, event.player_index)
 end)
@@ -252,6 +329,45 @@ script.on_event(defines.events.on_player_mined_entity, function(event)
   complete_trigger_technology(player.force.technologies[tech_name])
 end)
 
+-- How long the cutscene's own opening view holds still before panning,
+-- giving the client's renderer real wall-clock time to catch up with
+-- the chunks force-generated moments earlier (see is_new_surface below)
+-- — force_generate_chunk_requests() only guarantees the simulation side
+-- is ready immediately, not that the client has finished rendering
+-- graphics for chunks generated this same tick, and panning across them
+-- too early shows a skip-cutscene label with no actual pan. Held from
+-- within the cutscene controller (entered immediately, same tick as
+-- everything else) rather than delaying entry into it, so the player
+-- never sees a normal game view first.
+local CRASH_SITE_RENDER_CATCHUP_TICKS = 60
+
+-- Same as crash-site.lua's own create_cutscene, but with an extra
+-- leading waypoint that holds still at the pan's own start position for
+-- catchup_ticks before the real pan begins.
+local function create_crash_site_cutscene(player, goal_position, catchup_ticks)
+  local entry_angle = 0.70
+  local function rotate(offset, angle)
+    local x, y = offset[1], offset[2]
+    return { x * math.cos(angle) - y * math.sin(angle), x * math.sin(angle) + y * math.cos(angle) }
+  end
+  local offset = rotate({ 60, 0 }, (entry_angle - 0.25) * math.pi * 2)
+  local start_position = { goal_position[1] + offset[1], goal_position[2] + offset[2] }
+
+  player.set_controller({
+    type = defines.controllers.cutscene,
+    waypoints = {
+      { position = start_position, transition_time = 0, zoom = 2, time_to_wait = catchup_ticks },
+      { position = goal_position, transition_time = 450, zoom = 2, time_to_wait = 150 },
+      { target = player.character, transition_time = 150, zoom = 1.5, time_to_wait = 0 }
+    },
+    start_position = start_position,
+    start_zoom = 2
+  })
+
+  player.gui.screen.add({ type = "label", caption = { "skip-cutscene" }, name = "skip_cutscene_label" })
+  crash_site.on_player_display_refresh({ player_index = player.index })
+end
+
 script.on_nth_tick(1, function()
   local pending = storage.simulacruis_pending_spawns
   if not pending or #pending == 0 then
@@ -282,11 +398,7 @@ script.on_nth_tick(1, function()
     -- checks it), so it still shows up — but every debris/wreck piece
     -- IS collision-checked (can_place_entity, then a
     -- find_non_colliding_position fallback) and silently fails to place
-    -- against ungenerated ground, matching the reported "only the ship
-    -- appears, the debris doesn't". The cutscene camera pan has nothing
-    -- rendered to pan across either, so the player sees the
-    -- skip-cutscene prompt over a still-loading view instead of a
-    -- smooth pan.
+    -- against ungenerated ground.
     --
     -- Covers the character's own spawn-search radius (64 tiles, see
     -- find_non_colliding_position below), the ship's offset from that
@@ -349,7 +461,13 @@ script.on_nth_tick(1, function()
           player.character.destructible = false
         end
         storage.simulacruis_crash_site_cutscene_active = true
-        crash_site.create_cutscene(player, cutscene_goal)
+        create_crash_site_cutscene(player, cutscene_goal, CRASH_SITE_RENDER_CATCHUP_TICKS)
+      else
+        -- No cutscene for this player (later joiner, or freeplay
+        -- unavailable) — matches vanilla's own behavior of showing the
+        -- intro immediately rather than after a cutscene that never
+        -- happens for them.
+        simulacruis_show_intro_message(player)
       end
     end
   end
@@ -363,13 +481,19 @@ end)
 -- WE start (above) never sets that flag and freeplay's handlers just
 -- no-op for it. Replicated here against our own storage flag instead,
 -- mirroring crash-site.lua's own exit/cleanup logic exactly.
+--
+-- Checks waypoint_index == 3, not crash_site.is_crash_site_cutscene's
+-- own hardcoded 2 — create_crash_site_cutscene's extra leading hold
+-- waypoint shifts the final "look at the character" waypoint from index
+-- 2 to 3.
 script.on_event(defines.events.on_cutscene_waypoint_reached, function(event)
   if not storage.simulacruis_crash_site_cutscene_active then return end
-  if not crash_site.is_crash_site_cutscene(event) then return end
+  if not (event.player_index == 1 and event.waypoint_index == 3) then return end
 
   local player = game.get_player(event.player_index)
   if player then
     player.exit_cutscene()
+    simulacruis_show_intro_message(player)
   end
 end)
 

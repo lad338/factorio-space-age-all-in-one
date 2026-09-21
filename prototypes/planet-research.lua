@@ -16,7 +16,33 @@
 -- tech actually unlocks producing that ingredient — e.g. tungsten-
 -- carbide grants "carbon" and "tungsten-carbide", both of which need
 -- sulfuric acid, which is unlocked by sulfur-processing.
+--
+-- Skipped entirely when Any Planet Start is spawning the player on a
+-- real planet instead of Simulacruis (see control.lua's
+-- on_player_created): they'll reach Simulacruis later the normal way,
+-- researching each planet's own discovery tech as they actually visit
+-- it, so none of this restructuring is needed for that playthrough —
+-- and some of it directly conflicts with APS's own per-planet tech-tree
+-- changes (e.g. both this file and APS's Vulcanus/Fulgora compatibility
+-- patches redirect calcite-processing/recycling's prerequisites, in
+-- opposite directions, producing a cycle). APS's own tech tree wins
+-- outright rather than being reconciled piecemeal.
+local aps_planet = settings.startup["aps-planet"]
+if aps_planet and aps_planet.value ~= "none" then return end
+
 local tech = data.raw.technology
+
+-- Defensive against another mod also adding the same prerequisite in
+-- this same data-updates stage (e.g. Any Planet Start's own Vulcanus
+-- compatibility patch also adds "electric-engine" to big-mining-drill) —
+-- a duplicate entry fails Factorio's own prototype validation
+-- ("prerequisite is registered more than once").
+local function add_prerequisite_if_missing(technology, name)
+  for _, existing in ipairs(technology.prerequisites) do
+    if existing == name then return end
+  end
+  table.insert(technology.prerequisites, name)
+end
 
 tech["tungsten-carbide"].prerequisites = { "sulfur-processing" }
 tech["calcite-processing"].prerequisites = { "sulfur-processing" }
@@ -70,15 +96,15 @@ tech["lithium-processing"].prerequisites = { "holmium-processing" }
 -- — "concrete" unlocks refined-concrete (the same tech that unlocks
 -- plain concrete too), and "lubricant" unlocks lubricant.
 -- low-density-structure is added alongside them as a further gate.
-table.insert(tech["foundry"].prerequisites, "concrete")
-table.insert(tech["foundry"].prerequisites, "low-density-structure")
-table.insert(tech["foundry"].prerequisites, "lubricant")
+add_prerequisite_if_missing(tech["foundry"], "concrete")
+add_prerequisite_if_missing(tech["foundry"], "low-density-structure")
+add_prerequisite_if_missing(tech["foundry"], "lubricant")
 
 -- big-mining-drill's own recipe consumes 10 electric-engine-unit,
 -- unlocked by "electric-engine" — not
 -- guaranteed researched by its existing prerequisites (foundry,
 -- electric-mining-drill) alone.
-table.insert(tech["big-mining-drill"].prerequisites, "electric-engine")
+add_prerequisite_if_missing(tech["big-mining-drill"], "electric-engine")
 
 -- promethium-science-pack's own ground-based alternative recipe
 -- (planet-promethium.lua's "simulacruis-promethium-science-pack",
@@ -90,7 +116,7 @@ table.insert(tech["big-mining-drill"].prerequisites, "electric-engine")
 -- The vanilla recipe itself doesn't need this (promethium-asteroid-
 -- chunk is collected, not crafted), but the tech gates both recipes
 -- together, so this applies to both paths regardless.
-table.insert(tech["promethium-science-pack"].prerequisites, "spidertron")
+add_prerequisite_if_missing(tech["promethium-science-pack"], "spidertron")
 
 -- lightning-rod (the recipe, granted directly by planet-discovery-
 -- fulgora rather than a separate technology) is deliberately left
