@@ -1,6 +1,6 @@
 {
   "name": "space-age-all-in-one",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "title": "Space Age All in One - Simulacruis",
   "author": "lad338",
   "homepage": "https://github.com/lad338/factorio-space-age-all-in-one",
@@ -10,7 +10,8 @@
     "base >= 2.1.0",
     "space-age >= 2.1.0",
     "recycler >= 2.1.0",
-    "PlanetsLib >= 1.26.2"
+    "PlanetsLib >= 1.26.2",
+    "? any-planet-start"
   ],
   "expansion_required": true
 }

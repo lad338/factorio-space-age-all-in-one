@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.4.1
+Date: 2026-09-20
+  Compatibility:
+    - Added optional compatibility with Any Planet Start: no longer crashes on load or on spawn when both are installed, and Any Planet Start's own starting-planet choice is respected (Simulacruis stays reachable later as a normal travel destination).
+  Bugfixes:
+    - Fixed the crash-site cutscene sometimes not running correctly.
+
+---------------------------------------------------------------------------------------------------
 Version: 0.4.0
 Date: 2026-09-18
   Compatibility:
