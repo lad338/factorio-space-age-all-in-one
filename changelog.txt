@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.4.2
+Date: 2026-09-26
+  Bugfixes:
+    - Fixed agricultural towers not planting yumako/jellynut seeds on Simulacruis's Gleba soil correctly.
+    - Fixed the Fulgoran ruin lightning attractor's alerts when damaged or destroyed by demolishers.
+    - Fixed sandbox mode failing to load into the game.
+
+---------------------------------------------------------------------------------------------------
 Version: 0.4.1
 Date: 2026-09-20
   Compatibility:

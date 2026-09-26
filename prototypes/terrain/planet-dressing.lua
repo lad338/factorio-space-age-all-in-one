@@ -162,6 +162,25 @@ local gleba_decoratives = {
 for _, name in ipairs(gleba_entities) do add_entity(name, "simulacruis_gleba_weight") end
 for _, name in ipairs(gleba_decoratives) do add_decorative(name, "simulacruis_gleba_weight") end
 
+-- Agricultural towers plant yumako-seed/jellynut-seed via the seed
+-- item's own plant_result ("yumako-tree"/"jellystem" — the shared,
+-- unrenamed originals, since seed items aren't cloned per-planet),
+-- checked against THAT entity's own autoplace.tile_restriction — not
+-- the "simulacruis-yumako-tree"/"simulacruis-jellystem" clones above,
+-- which only govern map-gen autoplace. The originals' restriction only
+-- lists real Gleba's own natural soil tile names, which tiles.lua
+-- renamed on Simulacruis, so a tower standing on Simulacruis's own
+-- natural Gleba soil could never find a match. Appended, not replaced,
+-- so the originals still work unmodified on real Gleba.
+local function allow_planting_on_simulacruis_soil(plant_name, tile_name)
+  local renamed = "simulacruis-" .. tile_name
+  if data.raw.tile[renamed] then
+    table.insert(data.raw.plant[plant_name].autoplace.tile_restriction, renamed)
+  end
+end
+allow_planting_on_simulacruis_soil("yumako-tree", "natural-yumako-soil")
+allow_planting_on_simulacruis_soil("jellystem", "natural-jellynut-soil")
+
 -- Aquilo
 local aquilo_entities = { "lithium-iceberg-huge", "lithium-iceberg-big" }
 local aquilo_decoratives = {
