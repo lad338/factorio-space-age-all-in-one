@@ -26,6 +26,20 @@ local function capture_and_neutralize_freeplay_intro()
   end
 end
 
+-- Sandbox mode (data/base/script/sandbox/sandbox.lua) destroys the
+-- player's character outright in its own on_player_created and never
+-- creates a new one, leaving every player permanently characterless.
+-- crash_site.create_cutscene's own waypoints target player.character
+-- directly (nil there), and none of this mod's freeplay-flavored
+-- messaging make sense in a sandbox game anyway — skipped entirely via
+-- this check rather than patching each cutscene/message call to
+-- tolerate a nil character. Sandbox registers its own "sandbox" remote
+-- interface (data/base/script/sandbox/sandbox.lua), which nothing else
+-- has a reason to also register.
+local function is_sandbox_scenario()
+  return remote.interfaces["sandbox"] ~= nil
+end
+
 -- Mirrors freeplay's own get_starting_message/show_intro_message
 -- (script/freeplay/freeplay.lua).
 local function simulacruis_show_intro_message(player)
@@ -420,12 +434,15 @@ script.on_nth_tick(1, function()
       local position = surface.find_non_colliding_position("character", { 0, 0 }, 64, 1) or { x = 0, y = 0 }
       player.teleport(position, surface)
 
+      local sandbox = is_sandbox_scenario()
+
       -- Only the very first player gets the crash site + cutscene (see
       -- storage.simulacruis_crash_site_done in on_init), and only when
       -- freeplay's own version was actually disabled above — if some
       -- other scenario is running instead of freeplay, there's no
-      -- crash-site concept to restore at all.
-      if not storage.simulacruis_crash_site_done
+      -- crash-site concept to restore at all. Never in sandbox mode
+      -- either (see is_sandbox_scenario).
+      if not storage.simulacruis_crash_site_done and not sandbox
         and remote.interfaces["freeplay"] and remote.interfaces["freeplay"]["get_ship_items"] then
         storage.simulacruis_crash_site_done = true
 
@@ -462,7 +479,7 @@ script.on_nth_tick(1, function()
         end
         storage.simulacruis_crash_site_cutscene_active = true
         create_crash_site_cutscene(player, cutscene_goal, CRASH_SITE_RENDER_CATCHUP_TICKS)
-      else
+      elseif not sandbox then
         -- No cutscene for this player (later joiner, or freeplay
         -- unavailable) — matches vanilla's own behavior of showing the
         -- intro immediately rather than after a cutscene that never
@@ -638,14 +655,35 @@ end)
 -- reassigning the entity's own force to neutral, since that force may
 -- still matter for the lightning-attractor's own protective mechanic
 -- and isn't something this mod should second-guess.
-script.on_event(defines.events.on_entity_died, function(event)
-  local entity = event.entity
-  if not (entity and entity.valid and entity.name == "simulacruis-fulgoran-ruin-attractor") then return end
-  local force = event.force
+--
+-- Uses entity.force (the attractor's OWN force, "player"), not
+-- event.force/event.entity.force from the attacking side — on both
+-- on_entity_died and on_entity_damaged, "force" in the event data is
+-- the attacker's force (e.g. "enemy" for a demolisher), which has no
+-- players, so remove_alert would silently never run for anyone who
+-- could actually see the alert.
+local FULGORAN_RUIN_ATTRACTOR_FILTER = { { filter = "name", name = "simulacruis-fulgoran-ruin-attractor" } }
+
+local function clear_fulgoran_ruin_attractor_alert(entity, alert_type)
+  if not (entity and entity.valid) then return end
+  local force = entity.force
   if not force then return end
   for _, player in pairs(force.players) do
-    player.remove_alert({ entity = entity, type = defines.alert_type.entity_destroyed })
+    player.remove_alert({ entity = entity, type = alert_type })
   end
-end)
+end
+
+script.on_event(defines.events.on_entity_died, function(event)
+  clear_fulgoran_ruin_attractor_alert(event.entity, defines.alert_type.entity_destroyed)
+end, FULGORAN_RUIN_ATTRACTOR_FILTER)
+
+-- Same issue as on_entity_died above, but for damage that doesn't kill
+-- it: Factorio raises an "under attack" alert for any force-owned
+-- entity taking damage, not just ones that die. Filtered by name like
+-- on_entity_died above — this event fires for every damage instance on
+-- the map otherwise.
+script.on_event(defines.events.on_entity_damaged, function(event)
+  clear_fulgoran_ruin_attractor_alert(event.entity, defines.alert_type.entity_under_attack)
+end, FULGORAN_RUIN_ATTRACTOR_FILTER)
 
 
