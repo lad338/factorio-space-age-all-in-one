@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.3.2
+Date: 2026-10-05
+  Compatibility:
+    - Factorio 2.0 backport of version 0.4.3 (see the 0.4.3 entry below for the full list of changes carried forward).
+
+---------------------------------------------------------------------------------------------------
 Version: 0.4.3
 Date: 2026-10-03
   Compatibility:
