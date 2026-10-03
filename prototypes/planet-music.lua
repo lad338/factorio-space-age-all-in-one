@@ -5,8 +5,10 @@
 -- ambient-sound prototype whose `planet` field names the current
 -- surface's own planet (e.g.
 -- "vulcanus-1"/"vulcanus-interlude-1"/"vulcanus-3-hero" all carry
--- planets = {"vulcanus"}, and the game cycles through a given planet's
--- own main-track/hero-track/interlude entries while there.
+-- planet = "vulcanus", and the game cycles through a given planet's
+-- own main-track/hero-track/interlude entries while there — this is
+-- Factorio 2.0's singular `planet` string field; 2.1 renames it to a
+-- `planets` list instead.
 -- Cloning all of them onto "simulacruis" gives it the full combined
 -- playlist from all five real planets, rather than silence (no
 -- ambient-sound entry matches "simulacruis" at all otherwise) or a
@@ -48,13 +50,10 @@ local SOURCE_PLANETS = {
 }
 local HERO_TRACK_SOURCE_NAME = "after-the-crash"
 
--- ambient_sound.planets is a list (possibly nil/empty for space/menu
+-- ambient_sound.planet is a single string (possibly nil for space/menu
 -- tracks, which belong to no planet).
 local function has_source_planet(ambient_sound)
-  for _, planet in ipairs(ambient_sound.planets or {}) do
-    if SOURCE_PLANETS[planet] then return true end
-  end
-  return false
+  return SOURCE_PLANETS[ambient_sound.planet] == true
 end
 
 local new_tracks = {}
@@ -62,7 +61,7 @@ for name, ambient_sound in pairs(data.raw["ambient-sound"]) do
   if has_source_planet(ambient_sound) then
     local clone = table.deepcopy(ambient_sound)
     clone.name = "simulacruis-" .. name
-    clone.planets = { "simulacruis" }
+    clone.planet = "simulacruis"
     if name == HERO_TRACK_SOURCE_NAME then
       clone.track_type = "hero-track"
     elseif clone.track_type == "hero-track" then

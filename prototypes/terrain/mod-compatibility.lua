@@ -10,7 +10,7 @@
 -- shared "yumako-tree"/"jellystem" plant prototypes, gating its own
 -- greenhouse feature to real Gleba's pressure. Simulacruis deliberately
 -- keeps Nauvis's own pressure (1000) instead — see planet-crafting.lua's
--- own note on why fish-breeding/tree-seed need exactly that — so this
+-- own note on why fish-breeding/wood-processing need exactly that — so this
 -- condition can never be satisfied there, blocking agricultural towers
 -- from planting yumako/jellynut seeds at all.
 for _, plant_name in ipairs({ "yumako-tree", "jellystem" }) do
