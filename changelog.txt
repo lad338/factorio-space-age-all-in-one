@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.4.3
+Date: 2026-10-03
+  Compatibility:
+    - Added defensive compatibility for other mods (e.g. Factorissimo) that add surface-condition restrictions directly to shared vanilla plants Simulacruis also relies on, such as yumako-tree/jellystem, which could otherwise make them unplantable there.
+
+---------------------------------------------------------------------------------------------------
 Version: 0.3.1
 Date: 2026-09-28
   Compatibility:
