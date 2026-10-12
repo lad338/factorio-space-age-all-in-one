@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.4.4
+Date: 2026-10-11
+  Bugfixes:
+    - Fixed the Fulgoran ruin lightning attractor being treated as a player-owned building (it never had a lightning mechanic to protect on Simulacruis) — it's now neutral like every other Fulgoran ruin piece.
+
+---------------------------------------------------------------------------------------------------
 Version: 0.3.2
 Date: 2026-10-05
   Compatibility:
