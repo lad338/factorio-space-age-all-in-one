@@ -82,6 +82,7 @@ local function add_entity(name, gate_expression)
   table.insert(new_prototypes, clone)
   entity_settings[clone.name] = {}
   table.insert(disabled_entities, name)
+  return clone
 end
 
 local function add_decorative(name, gate_expression)
@@ -131,8 +132,27 @@ local fulgora_decoratives = {
   "fulgoran-ruin-tiny", "fulgoran-gravewort", "urchin-cactus",
   "medium-fulgora-rock", "small-fulgora-rock", "tiny-fulgora-rock"
 }
-for _, name in ipairs(fulgora_entities) do add_entity(name, "simulacruis_fulgora_weight") end
+local fulgoran_ruin_attractor_clone
+for _, name in ipairs(fulgora_entities) do
+  local clone = add_entity(name, "simulacruis_fulgora_weight")
+  if name == "fulgoran-ruin-attractor" then
+    fulgoran_ruin_attractor_clone = clone
+  end
+end
 for _, name in ipairs(fulgora_decoratives) do add_decorative(name, "simulacruis_fulgora_weight") end
+
+-- Real Fulgora's own ruin-generation autoplace sets force = "player" on
+-- this one piece specifically so it acts as a free lightning attractor,
+-- protecting nearby player structures from strikes it never built.
+-- Lightning never strikes on Simulacruis at all (a whole-surface,
+-- non-relocatable vanilla mechanic — see planet-research.lua), so that
+-- role is moot here. Left as "player" it instead reads as a structure
+-- the player owns but never built, causing spurious alerts and
+-- demolisher attacks (see control.lua). Overridden to neutral, matching
+-- every other Fulgoran ruin piece.
+if fulgoran_ruin_attractor_clone then
+  fulgoran_ruin_attractor_clone.autoplace.force = "neutral"
+end
 
 -- Gleba (yumako-tree/jellystem are the actual food-producing plants —
 -- "jellystem" is the real prototype name for what the jellynut item
