@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.4.5
+Date: 2026-11-21
+  Compatibility:
+    - Added defensive compatibility for the Alien Biomes mod, which disables most vanilla trees/rocks/decoratives (including one of Gleba's own trees it doesn't recognize, and several rocks/sand-decals unconditionally) — this previously crashed Simulacruis's own terrain setup outright; it now skips cloning/gating anything another mod has already disabled instead.
+
+---------------------------------------------------------------------------------------------------
 Version: 0.3.3
 Date: 2026-10-11
   Compatibility:

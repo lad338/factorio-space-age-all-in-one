@@ -23,10 +23,24 @@
 -- fix applied there defensively, since this exact leak affects tiles
 -- as well, not just entity-like things).
 
+-- Defensive against another mod stripping a vanilla prototype's own
+-- autoplace entirely (`proto.autoplace = nil`) before this runs --
+-- confirmed as a real crash with the Alien Biomes mod, which
+-- unconditionally nils several of these exact rocks/sand-decals
+-- (medium-rock, small-sand-rock, tiny-rock, medium-sand-rock,
+-- sand-decal, sand-dune-decal, red-desert-decal, big-rock,
+-- big-sand-rock, huge-rock -- all of which nauvis_decoratives/
+-- nauvis_simple_entities below also list). A prototype with no
+-- probability_expression to begin with has nothing to gate -- skip it
+-- rather than crash building a formula around a nil value; whatever
+-- disabled it upstream already keeps it from placing anywhere.
 local function gated_clone(collection, original_name, gate_expression)
-  local proto = table.deepcopy(data.raw[collection][original_name])
+  local original = data.raw[collection][original_name]
+  if not (original.autoplace and original.autoplace.probability_expression) then
+    return nil
+  end
+  local proto = table.deepcopy(original)
   proto.name = "simulacruis-" .. original_name
-  proto.autoplace = proto.autoplace or {}
   proto.autoplace.probability_expression =
     "if(" .. gate_expression .. " > 0.5, " .. proto.autoplace.probability_expression .. ", -inf)"
   -- Fully functional (not `hidden`), just not a separate browsable
@@ -86,8 +100,10 @@ local entity_settings = {}
 
 for _, name in ipairs(nauvis_tiles) do
   local clone = gated_clone("tile", name, "simulacruis_nauvis_weight")
-  table.insert(new_tiles, clone)
-  tile_settings[clone.name] = {}
+  if clone then
+    table.insert(new_tiles, clone)
+    tile_settings[clone.name] = {}
+  end
 end
 
 -- deepwater's own transition_merges_with_tile/allowed_neighbors both
@@ -111,36 +127,54 @@ end
 for _, name in ipairs(nauvis_decoratives) do
   if data.raw["optimized-decorative"][name] then
     local clone = gated_clone("optimized-decorative", name, "simulacruis_nauvis_weight")
-    table.insert(new_decoratives, clone)
-    decorative_settings[clone.name] = {}
+    if clone then
+      table.insert(new_decoratives, clone)
+      decorative_settings[clone.name] = {}
+    end
   end
 end
 
 for _, name in ipairs(nauvis_simple_entities) do
   if data.raw["simple-entity"][name] then
     local clone = gated_clone("simple-entity", name, "simulacruis_nauvis_weight")
-    table.insert(new_simple_entities, clone)
-    entity_settings[clone.name] = {}
+    if clone then
+      table.insert(new_simple_entities, clone)
+      entity_settings[clone.name] = {}
+    end
   end
 end
 
 for _, name in ipairs(nauvis_resources) do
   local clone = gated_clone("resource", name, "simulacruis_nauvis_weight")
-  table.insert(new_resources, clone)
-  entity_settings[clone.name] = {}
+  if clone then
+    table.insert(new_resources, clone)
+    entity_settings[clone.name] = {}
+  end
 end
 
 for _, name in ipairs(nauvis_fish) do
   local clone = gated_clone("fish", name, "simulacruis_nauvis_weight")
-  table.insert(new_fish, clone)
-  entity_settings[clone.name] = {}
+  if clone then
+    table.insert(new_fish, clone)
+    entity_settings[clone.name] = {}
+  end
 end
 
-data:extend(new_tiles)
-data:extend(new_decoratives)
-data:extend(new_simple_entities)
-data:extend(new_resources)
-data:extend(new_fish)
+-- data:extend rejects an empty array outright ("Invalid array of
+-- prototypes: {}") -- reachable now that gated_clone can skip every
+-- entry in a list (e.g. Alien Biomes nils autoplace on all three of
+-- nauvis_simple_entities' own rocks), not just some of them.
+local function extend_if_any(prototypes)
+  if #prototypes > 0 then
+    data:extend(prototypes)
+  end
+end
+
+extend_if_any(new_tiles)
+extend_if_any(new_decoratives)
+extend_if_any(new_simple_entities)
+extend_if_any(new_resources)
+extend_if_any(new_fish)
 
 local planet = data.raw.planet.simulacruis
 local autoplace = planet.map_gen_settings.autoplace_settings
@@ -148,8 +182,21 @@ local autoplace = planet.map_gen_settings.autoplace_settings
 for name, setting in pairs(tile_settings) do
   autoplace.tile.settings[name] = setting
 end
+-- The engine itself rejects a planet's autoplace_settings.<type>.settings
+-- entry for a name whose own prototype has no autoplace specification
+-- at all ("X (decorative) does not have an autoplace specification"),
+-- not just this mod's own Lua -- reachable the same way as the
+-- data:extend guards above, for the same reason (Alien Biomes nils
+-- autoplace on several of these exact names).
+local function has_autoplace(collection, name)
+  local proto = data.raw[collection][name]
+  return proto ~= nil and proto.autoplace ~= nil
+end
+
 for _, name in ipairs(nauvis_tiles) do
-  autoplace.tile.settings[name] = { size = 0 }
+  if has_autoplace("tile", name) then
+    autoplace.tile.settings[name] = { size = 0 }
+  end
 end
 
 autoplace.decorative = autoplace.decorative or { settings = {} }
@@ -158,18 +205,26 @@ for name, setting in pairs(decorative_settings) do
   autoplace.decorative.settings[name] = setting
 end
 for _, name in ipairs(nauvis_decoratives) do
-  autoplace.decorative.settings[name] = { size = 0 }
+  if has_autoplace("optimized-decorative", name) then
+    autoplace.decorative.settings[name] = { size = 0 }
+  end
 end
 
 for name, setting in pairs(entity_settings) do
   autoplace.entity.settings[name] = setting
 end
 for _, name in ipairs(nauvis_simple_entities) do
-  autoplace.entity.settings[name] = { size = 0 }
+  if has_autoplace("simple-entity", name) then
+    autoplace.entity.settings[name] = { size = 0 }
+  end
 end
 for _, name in ipairs(nauvis_resources) do
-  autoplace.entity.settings[name] = { size = 0 }
+  if has_autoplace("resource", name) then
+    autoplace.entity.settings[name] = { size = 0 }
+  end
 end
 for _, name in ipairs(nauvis_fish) do
-  autoplace.entity.settings[name] = { size = 0 }
+  if has_autoplace("fish", name) then
+    autoplace.entity.settings[name] = { size = 0 }
+  end
 end

@@ -48,10 +48,23 @@ local NO_ENTITY_NAME_LOCALE_KEY = {
   ["tree-09"] = true, ["tree-09-brown"] = true, ["tree-09-red"] = true,
 }
 
+-- Defensive against another mod stripping a vanilla tree's own
+-- autoplace entirely (`tree.autoplace = nil`) before this runs --
+-- confirmed as a real crash with the Alien Biomes mod, whose own
+-- "disable every tree except this hardcoded exemption list" logic is
+-- missing "water-cane" from its own Space Age exemption list (it does
+-- include the other nine Gleba trees), wiping its autoplace along with
+-- every other tree it doesn't recognize. A tree with no
+-- probability_expression to begin with has nothing to gate -- skip it
+-- rather than crash building a formula around a nil value; whatever
+-- disabled it upstream already keeps it from placing anywhere.
 local function gated_tree_clone(original_name, gate_expression)
-  local tree = table.deepcopy(data.raw.tree[original_name])
+  local original = data.raw.tree[original_name]
+  if not (original.autoplace and original.autoplace.probability_expression) then
+    return nil
+  end
+  local tree = table.deepcopy(original)
   tree.name = "simulacruis-" .. original_name
-  tree.autoplace = tree.autoplace or {}
   tree.autoplace.probability_expression =
     "if(" .. gate_expression .. " > 0.5, " .. tree.autoplace.probability_expression .. ", -inf)"
   remap_tile_restriction(tree)
@@ -75,6 +88,7 @@ local originals_to_disable = {}
 
 local function add_tree(name, gate_expression)
   local clone = gated_tree_clone(name, gate_expression)
+  if not clone then return end
   table.insert(new_trees, clone)
   entity_settings[clone.name] = {}
   table.insert(originals_to_disable, name)
@@ -101,7 +115,13 @@ for _, name in ipairs(gleba_trees) do
   add_tree(name, "simulacruis_gleba_weight")
 end
 
-data:extend(new_trees)
+-- data:extend rejects an empty array outright ("Invalid array of
+-- prototypes: {}") -- reachable now that gated_tree_clone can skip
+-- every entry, not just some of them, if another mod disabled every
+-- tree in one of the groups above.
+if #new_trees > 0 then
+  data:extend(new_trees)
+end
 
 -- Merge the gated clones in, and disable the un-gated originals that
 -- Simulacruis inherited from the Nauvis deepcopy (or, for Vulcanus's
