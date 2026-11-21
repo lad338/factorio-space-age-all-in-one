@@ -58,4 +58,26 @@ planet.map_gen_settings.property_expression_names = {
   cliff_elevation = "cliff_elevation_from_elevation"
 }
 
+-- Both of these are whole-surface PlanetPrototype fields, not
+-- zone-scoped -- there's no per-zone hook for either mechanic, so
+-- turning one on applies it to the ENTIRE planet, not just its
+-- Aquilo/Fulgora zone. Off by default; see settings.cfg's own
+-- descriptions for the softlock caution shown in the mod-options
+-- screen itself, not just here.
+if settings.startup["simulacruis-enable-aquilo-freezing"].value then
+  -- The single boolean driving Aquilo's own "entities need heating or
+  -- they freeze" mechanic (confirmed in a real dump: Aquilo is the
+  -- only vanilla planet with this field set at all).
+  planet.entities_require_heating = true
+end
+
+if settings.startup["simulacruis-enable-fulgora-lightning"].value then
+  -- Copies Fulgora's own real lightning_properties wholesale (strike
+  -- rate, search radius, the lightning-rod/-collector priority rules,
+  -- etc.) rather than inventing a fresh table -- "enable Fulgora
+  -- lightning" should behave exactly like Fulgora's own, not a
+  -- reinterpretation of it.
+  planet.lightning_properties = table.deepcopy(data.raw["planet"]["fulgora"].lightning_properties)
+end
+
 PlanetsLib:extend(planet)

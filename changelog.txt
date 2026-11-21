@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.4.6
+Date: 2026-11-21
+  Features:
+    - Added two startup settings, both off by default: "Enable Aquilo freezing" and "Enable Fulgora lightning". Both apply to the WHOLE Simulacruis surface, not just their own zone — suggested for use alongside other mods that help manage planet-wide heating/lightning protection, since enabling either alone can softlock an unprepared playthrough.
+
+---------------------------------------------------------------------------------------------------
 Version: 0.4.5
 Date: 2026-11-21
   Compatibility:
