@@ -36,5 +36,19 @@ data:extend({
     setting_type = "startup",
     default_value = false,
     order = "e"
+  },
+  {
+    type = "bool-setting",
+    name = "simulacruis-enable-aquilo-freezing",
+    setting_type = "startup",
+    default_value = false,
+    order = "f"
+  },
+  {
+    type = "bool-setting",
+    name = "simulacruis-enable-fulgora-lightning",
+    setting_type = "startup",
+    default_value = false,
+    order = "g"
   }
 })
