@@ -116,25 +116,47 @@ add_all(gleba_water_tiles, "simulacruis_gleba_water_gate")
 add_all(aquilo_tiles, "simulacruis_aquilo_weight")
 add_all(aquilo_hazard_tiles, "simulacruis_aquilo_hazard_gate")
 
--- Lava and heavy-oil-sea are dangerous/disruptive enough that they're
--- withheld until Zone 4, well past the early game, rather than
--- appearing as soon as a Vulcanus/Aquilo patch does — so they use a
--- combined gate rather than the plain per-planet ownership weight.
+-- Lava and Fulgora's own oil ocean are dangerous/disruptive enough
+-- that they're withheld until a late zone, well past the early game,
+-- rather than appearing as soon as a Vulcanus/Fulgora patch does — so
+-- they use a combined gate rather than the plain per-planet ownership
+-- weight. Both start zones are player-configurable (see settings.lua:
+-- simulacruis-vulcanus-lava-zone / simulacruis-fulgora-oil-sea-zone),
+-- default 4 (today's original behavior) each.
+local VULCANUS_LAVA_ZONE = settings.startup["simulacruis-vulcanus-lava-zone"].value
+local FULGORA_OIL_SEA_ZONE = settings.startup["simulacruis-fulgora-oil-sea-zone"].value
+
+-- Sum of this zone's own weight and every zone further out, e.g. zone
+-- 3 -> "simulacruis_zone_3_weight + simulacruis_zone_4_weight". Zone
+-- weights partition to 1 at any given point (exactly one zone is ever
+-- really "active" there), so this sum reads as "has this point
+-- reached min_zone or beyond" without needing a separate boolean
+-- field per zone. (Duplicated from planet-resources.lua's own copy --
+-- these are separate require'd scripts, not shared modules, matching
+-- this codebase's existing per-file-helper convention.)
+local function zone_and_beyond_weight_expression(min_zone)
+  local terms = {}
+  for zone = min_zone, 4 do
+    table.insert(terms, "simulacruis_zone_" .. zone .. "_weight")
+  end
+  return table.concat(terms, " + ")
+end
+
 data:extend({
   {
     type = "noise-expression",
-    name = "simulacruis_vulcanus_zone_4_gate",
-    expression = "min(simulacruis_vulcanus_weight, simulacruis_zone_4_weight)"
+    name = "simulacruis_vulcanus_lava_gate",
+    expression = "min(simulacruis_vulcanus_weight, " .. zone_and_beyond_weight_expression(VULCANUS_LAVA_ZONE) .. ")"
   },
   {
     type = "noise-expression",
-    name = "simulacruis_fulgora_zone_4_gate",
-    expression = "min(simulacruis_fulgora_weight, simulacruis_zone_4_weight)"
+    name = "simulacruis_fulgora_oil_sea_gate",
+    expression = "min(simulacruis_fulgora_weight, " .. zone_and_beyond_weight_expression(FULGORA_OIL_SEA_ZONE) .. ")"
   }
 })
 
-local lava = gated_tile_clone("lava", "simulacruis_vulcanus_zone_4_gate")
-local lava_hot = gated_tile_clone("lava-hot", "simulacruis_vulcanus_zone_4_gate")
+local lava = gated_tile_clone("lava", "simulacruis_vulcanus_lava_gate")
+local lava_hot = gated_tile_clone("lava-hot", "simulacruis_vulcanus_lava_gate")
 lava.allowed_neighbors = { "simulacruis-lava-hot" }
 lava_hot.allowed_neighbors = { "simulacruis-lava" }
 table.insert(new_tiles, lava)
@@ -144,8 +166,8 @@ tile_settings["simulacruis-lava-hot"] = {}
 table.insert(originals_to_disable, "lava")
 table.insert(originals_to_disable, "lava-hot")
 
-local oil_shallow = gated_tile_clone("oil-ocean-shallow", "simulacruis_fulgora_zone_4_gate")
-local oil_deep = gated_tile_clone("oil-ocean-deep", "simulacruis_fulgora_zone_4_gate")
+local oil_shallow = gated_tile_clone("oil-ocean-shallow", "simulacruis_fulgora_oil_sea_gate")
+local oil_deep = gated_tile_clone("oil-ocean-deep", "simulacruis_fulgora_oil_sea_gate")
 table.insert(new_tiles, oil_shallow)
 table.insert(new_tiles, oil_deep)
 tile_settings["simulacruis-oil-ocean-shallow"] = {}

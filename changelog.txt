@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.4.7
+Date: 2026-11-22
+  Features:
+    - Added four startup settings letting players tune Zone 2's original difficulty nerfs on Vulcanus and Fulgora: "Vulcanus hazard start zone" (tungsten ore, demolishers, and full-size sulfuric acid geysers — default Zone 3), "Full-size scrap patches from Zone 2" (off by default), "Lava start zone", and "Fulgora oil sea start zone" (both default Zone 4).
+
+---------------------------------------------------------------------------------------------------
 Version: 0.4.6
 Date: 2026-11-21
   Features:

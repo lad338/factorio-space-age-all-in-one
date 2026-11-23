@@ -50,5 +50,36 @@ data:extend({
     setting_type = "startup",
     default_value = false,
     order = "g"
+  },
+  {
+    type = "int-setting",
+    name = "simulacruis-vulcanus-hazard-zone",
+    setting_type = "startup",
+    default_value = 3,
+    allowed_values = { 2, 3, 4 },
+    order = "h"
+  },
+  {
+    type = "bool-setting",
+    name = "simulacruis-fulgora-full-size-scrap",
+    setting_type = "startup",
+    default_value = false,
+    order = "i"
+  },
+  {
+    type = "int-setting",
+    name = "simulacruis-vulcanus-lava-zone",
+    setting_type = "startup",
+    default_value = 4,
+    allowed_values = { 2, 3, 4 },
+    order = "j"
+  },
+  {
+    type = "int-setting",
+    name = "simulacruis-fulgora-oil-sea-zone",
+    setting_type = "startup",
+    default_value = 4,
+    allowed_values = { 2, 3, 4 },
+    order = "k"
   }
 })

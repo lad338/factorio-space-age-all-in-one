@@ -5,10 +5,14 @@
 data:extend({
   -- Shared by territory_index and territory_variation so the two can
   -- never disagree on where Vulcanus ownership actually is.
+  -- simulacruis_vulcanus_hazard_zone_weight (planet-resources.lua) is
+  -- shared with tungsten ore and sulfuric acid geysers, all driven by
+  -- the same simulacruis-vulcanus-hazard-zone setting -- moving that
+  -- setting moves demolishers' own eligibility along with it.
   {
     type = "noise-expression",
     name = "simulacruis_demolisher_eligible",
-    expression = "simulacruis_vulcanus_zone_3plus_weight > 0.5"
+    expression = "simulacruis_vulcanus_hazard_zone_weight > 0.5"
   },
   -- zone_3_cell and zone_4_cell are independent grids. Gating with
   -- simulacruis_demolisher_eligible collapses everywhere outside real
@@ -21,9 +25,15 @@ data:extend({
                      if(simulacruis_zone_4_weight > 0.5, simulacruis_zone_4_cell, simulacruis_zone_3_cell),\z
                      -1)"
   },
-  -- Demolishers only spawn in Zone 3 and beyond. Where eligible, tiers up
-  -- from small (0) to big (2) the further out you are, one
-  -- Zone-3-ring-width of distance past Zone 3's own radius per tier.
+  -- Where eligible, tiers up from small (0) to big (2) the further out
+  -- you are, one Zone-3-ring-width of distance past Zone 3's own
+  -- radius per tier. Still anchored to Zone 3's own radius regardless
+  -- of simulacruis-vulcanus-hazard-zone's own setting (no
+  -- zone_4_radius_value exists to anchor to instead, since Zone 4 has
+  -- no outer bound) -- at a lower hazard-zone setting, this just means
+  -- every demolisher stays tier 0 (small) for longer before the same
+  -- tiering curve as today kicks in once Zone 3's own radius is
+  -- reached, rather than tiering up earlier too.
   {
     type = "noise-expression",
     name = "simulacruis_demolisher_territory_variation",
