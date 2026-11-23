@@ -27,7 +27,8 @@
 -- strafers). Stompers are effectively unbeatable in the early game, so
 -- the full egg raft is restricted to Zone 3+, matching the same
 -- zone-gating technique already used for tungsten ore
--- (simulacruis_vulcanus_zone_3plus_weight in planet-resources.lua).
+-- (now player-configurable there via simulacruis-vulcanus-hazard-zone
+-- -- no settings.lua equivalent exists for this egg-raft gate).
 -- gleba-spawner-small keeps spawning across all of Gleba's own
 -- territory (Zone 2+), unaffected.
 data:extend({

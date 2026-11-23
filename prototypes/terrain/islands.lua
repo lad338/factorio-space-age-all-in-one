@@ -379,9 +379,9 @@ data:extend({
   { type = "noise-expression", name = "simulacruis_island_hazard_zone_gate",
     expression = "(simulacruis_island_hazard_zone_ramp + simulacruis_island_interior_fade) > 0.5" }
 })
-override("simulacruis_vulcanus_zone_4_gate",
+override("simulacruis_vulcanus_lava_gate",
   "min(simulacruis_vulcanus_weight, min(simulacruis_island_is_interior, simulacruis_island_hazard_zone_gate))")
-override("simulacruis_fulgora_zone_4_gate",
+override("simulacruis_fulgora_oil_sea_gate",
   "min(simulacruis_fulgora_weight, min(simulacruis_island_is_interior, simulacruis_island_hazard_zone_gate))")
 
 -- Aquilo's impassable tiles (ammoniacal ocean, brash-ice) stay off the

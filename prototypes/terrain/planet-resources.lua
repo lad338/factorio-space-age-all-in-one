@@ -28,33 +28,72 @@
 -- sharp cut, not a precise mechanical guarantee of an exact output
 -- count (that would need forking each formula's own spot_noise
 -- clustering/quantity parameters, a much larger undertaking) —
--- approximating "scarce and small in Zone 2, plentiful from Zone 3+"
--- rather than hitting an exact number. Geysers get a more aggressive
--- size cut than scrap, since a geyser realistically only needs to
--- yield once to be useful while a scrap patch needs real volume.
--- Tungsten's Zone 2 exclusion is a placement restriction (handled via
--- simulacruis_vulcanus_zone_3plus_weight below), not a richness/size
--- tweak, so it's unaffected by these multipliers.
+-- approximating "scarce and small below the configured zone,
+-- plentiful at/beyond it" rather than hitting an exact number.
+-- Geysers get a more aggressive size cut than scrap, since a geyser
+-- realistically only needs to yield once to be useful while a scrap
+-- patch needs real volume.
+--
+-- Both thresholds are player-configurable (see settings.lua):
+-- - simulacruis-vulcanus-hazard-zone picks the earliest zone where
+--   tungsten ore (a placement restriction, not a richness/size tweak —
+--   see simulacruis_vulcanus_hazard_zone_weight below), demolishers
+--   (planet-demolishers.lua reads this same weight), and full-size
+--   sulfuric acid geysers all become available together.
+-- - simulacruis-fulgora-full-size-scrap is independent of that: scrap
+--   always appears as soon as Fulgora's own zone does (there's no
+--   earlier zone to place it in that it doesn't already occupy), so
+--   there's nothing to "move" scrap to — only the Zone 2 size penalty
+--   itself to keep or remove.
+local VULCANUS_HAZARD_ZONE = settings.startup["simulacruis-vulcanus-hazard-zone"].value
+local FULGORA_FULL_SIZE_SCRAP = settings.startup["simulacruis-fulgora-full-size-scrap"].value
+
+-- Sum of this zone's own weight and every zone further out, e.g. zone
+-- 3 -> "simulacruis_zone_3_weight + simulacruis_zone_4_weight". Zone
+-- weights partition to 1 at any given point (exactly one zone is ever
+-- really "active" there), so this sum reads as "has this point
+-- reached min_zone or beyond" without needing a separate boolean
+-- field per zone.
+local function zone_and_beyond_weight_expression(min_zone)
+  local terms = {}
+  for zone = min_zone, 4 do
+    table.insert(terms, "simulacruis_zone_" .. zone .. "_weight")
+  end
+  return table.concat(terms, " + ")
+end
+
 data:extend({
   {
     type = "noise-expression",
-    name = "simulacruis_vulcanus_zone_3plus_weight",
-    expression = "min(simulacruis_vulcanus_weight, simulacruis_zone_3_weight + simulacruis_zone_4_weight)"
+    name = "simulacruis_vulcanus_hazard_zone_weight",
+    expression = "min(simulacruis_vulcanus_weight, " .. zone_and_beyond_weight_expression(VULCANUS_HAZARD_ZONE) .. ")"
+  },
+  -- Full-size once a point has reached the configured hazard zone;
+  -- scarce/small below it (e.g. just Zone 2, at the default setting
+  -- of 3 — today's original behavior).
+  {
+    type = "noise-expression",
+    name = "simulacruis_vulcanus_geyser_richness_multiplier",
+    expression = "if(simulacruis_vulcanus_hazard_zone_weight > 0.5, 1, 0.08)"
   },
   {
     type = "noise-expression",
-    name = "simulacruis_tiny_in_zone_2_multiplier",
-    expression = "if(simulacruis_zone_2_weight > 0.5, 0.08, 1)"
+    name = "simulacruis_vulcanus_geyser_size_multiplier",
+    expression = "if(simulacruis_vulcanus_hazard_zone_weight > 0.5, 1, 0.15)"
+  },
+  -- Scrap's own pair, gated by the independent boolean setting instead
+  -- — picked at data stage (a plain Lua branch, not a noise `if`),
+  -- since there's no per-point condition to evaluate here, just a
+  -- flat yes/no for the whole generated map.
+  {
+    type = "noise-expression",
+    name = "simulacruis_fulgora_scrap_richness_multiplier",
+    expression = FULGORA_FULL_SIZE_SCRAP and "1" or "if(simulacruis_zone_2_weight > 0.5, 0.08, 1)"
   },
   {
     type = "noise-expression",
-    name = "simulacruis_tiny_geyser_size_multiplier",
-    expression = "if(simulacruis_zone_2_weight > 0.5, 0.15, 1)"
-  },
-  {
-    type = "noise-expression",
-    name = "simulacruis_tiny_scrap_size_multiplier",
-    expression = "if(simulacruis_zone_2_weight > 0.5, 0.35, 1)"
+    name = "simulacruis_fulgora_scrap_size_multiplier",
+    expression = FULGORA_FULL_SIZE_SCRAP and "1" or "if(simulacruis_zone_2_weight > 0.5, 0.35, 1)"
   }
 })
 
@@ -97,7 +136,7 @@ local entity_settings = {}
 table.insert(new_resources, gated_clone_with_formula(
   "tungsten-ore", "simulacruis-tungsten-ore",
   "vulcanus_tungsten_ore_probability", "vulcanus_tungsten_ore_richness",
-  "simulacruis_vulcanus_zone_3plus_weight"
+  "simulacruis_vulcanus_hazard_zone_weight"
 ))
 table.insert(new_resources, gated_clone_with_formula(
   "calcite", "simulacruis-calcite",
@@ -106,8 +145,8 @@ table.insert(new_resources, gated_clone_with_formula(
 ))
 table.insert(new_resources, gated_clone_with_formula(
   "sulfuric-acid-geyser", "simulacruis-sulfuric-acid-geyser",
-  "simulacruis_tiny_geyser_size_multiplier * vulcanus_sulfuric_acid_geyser_probability",
-  "simulacruis_tiny_in_zone_2_multiplier * vulcanus_sulfuric_acid_geyser_richness",
+  "simulacruis_vulcanus_geyser_size_multiplier * vulcanus_sulfuric_acid_geyser_probability",
+  "simulacruis_vulcanus_geyser_richness_multiplier * vulcanus_sulfuric_acid_geyser_richness",
   "simulacruis_vulcanus_weight"
 ))
 table.insert(new_resources, gated_clone_with_formula(
@@ -126,10 +165,10 @@ local scrap = table.deepcopy(data.raw.resource["scrap"])
 scrap.name = "simulacruis-scrap"
 scrap.autoplace = scrap.autoplace or {}
 scrap.autoplace.probability_expression =
-  "if(simulacruis_fulgora_weight > 0.5, simulacruis_tiny_scrap_size_multiplier * (" ..
+  "if(simulacruis_fulgora_weight > 0.5, simulacruis_fulgora_scrap_size_multiplier * (" ..
   scrap.autoplace.probability_expression .. "), -inf)"
 scrap.autoplace.richness_expression =
-  "simulacruis_tiny_in_zone_2_multiplier * (" .. scrap.autoplace.richness_expression .. ")"
+  "simulacruis_fulgora_scrap_richness_multiplier * (" .. scrap.autoplace.richness_expression .. ")"
 scrap.hidden_in_factoriopedia = true
 scrap.localised_name = { "entity-name.scrap" }
 table.insert(new_resources, scrap)
